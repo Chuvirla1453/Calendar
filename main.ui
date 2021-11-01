@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>839</width>
-    <height>900</height>
+    <height>911</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,40 +33,6 @@
       <height>271</height>
      </rect>
     </property>
-    <widget class="QLabel" name="curDate">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>141</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Script MT Bold</family>
-       <pointsize>14</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>CurrentDate</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="addButton">
-     <property name="geometry">
-      <rect>
-       <x>180</x>
-       <y>0</y>
-       <width>181</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Добавить запись</string>
-     </property>
-    </widget>
     <widget class="QPushButton" name="editButton">
      <property name="geometry">
       <rect>
@@ -98,9 +64,53 @@
       <rect>
        <x>0</x>
        <y>40</y>
-       <width>841</width>
-       <height>241</height>
+       <width>831</width>
+       <height>231</height>
       </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="widget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>620</y>
+      <width>381</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <widget class="QPushButton" name="addButton">
+     <property name="geometry">
+      <rect>
+       <x>180</x>
+       <y>0</y>
+       <width>181</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Добавить запись</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="curDate">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>7</y>
+       <width>141</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Script MT Bold</family>
+       <pointsize>14</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>CurrentDate</string>
      </property>
     </widget>
    </widget>

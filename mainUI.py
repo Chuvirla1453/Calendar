@@ -1,0 +1,53 @@
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(839, 911)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.dateData = QtWidgets.QWidget(self.centralwidget)
+        self.dateData.setGeometry(QtCore.QRect(0, 620, 831, 271))
+        self.dateData.setObjectName("dateData")
+        self.editButton = QtWidgets.QPushButton(self.dateData)
+        self.editButton.setGeometry(QtCore.QRect(380, 0, 181, 31))
+        self.editButton.setObjectName("editButton")
+        self.delButton = QtWidgets.QPushButton(self.dateData)
+        self.delButton.setGeometry(QtCore.QRect(580, 0, 181, 31))
+        self.delButton.setObjectName("delButton")
+        self.entryTable = QtWidgets.QTableWidget(self.dateData)
+        self.entryTable.setGeometry(QtCore.QRect(0, 40, 831, 231))
+        self.entryTable.setObjectName("entryTable")
+        self.entryTable.setColumnCount(0)
+        self.entryTable.setRowCount(0)
+        self.widget = QtWidgets.QWidget(self.centralwidget)
+        self.widget.setGeometry(QtCore.QRect(0, 620, 381, 41))
+        self.widget.setObjectName("widget")
+        self.addButton = QtWidgets.QPushButton(self.widget)
+        self.addButton.setGeometry(QtCore.QRect(180, 0, 181, 31))
+        self.addButton.setObjectName("addButton")
+        self.curDate = QtWidgets.QLabel(self.widget)
+        self.curDate.setGeometry(QtCore.QRect(10, 7, 141, 21))
+        font = QtGui.QFont()
+        font.setFamily("Script MT Bold")
+        font.setPointSize(14)
+        font.setBold(True)
+        font.setWeight(75)
+        self.curDate.setFont(font)
+        self.curDate.setObjectName("curDate")
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "THE BEST PROJECT OF ALL TIMES AND PEOPLES"))
+        self.editButton.setText(_translate("MainWindow", "Редактировать запись"))
+        self.delButton.setText(_translate("MainWindow", "Удалить запись"))
+        self.addButton.setText(_translate("MainWindow", "Добавить запись"))
+        self.curDate.setText(_translate("MainWindow", "CurrentDate"))

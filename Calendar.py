@@ -4,13 +4,19 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap
+
 from mainUI import Ui_MainWindow
 from addDialogUI import Ui_addDialog
 from editDialogUI import Ui_editDialog
+from addTypeDialogUI import Ui_addTypeDialog
+from uselessUI import Ui_UselessDialog
+from calcDialogUI import Ui_CalcDialog
+
 import datetime as dt
 import time
-
+import pymorphy2
 DATES = []
+
 
 class CustomCalendar(QtWidgets.QCalendarWidget):
     def __init__(self, parent=None):
@@ -28,7 +34,7 @@ class CustomCalendar(QtWidgets.QCalendarWidget):
             painter.drawLine(rect.topRight(), rect.bottomRight())
             painter.drawLine(rect.bottomLeft(), rect.bottomRight())
             painter.drawLine(rect.topLeft(), rect.bottomLeft())
-        elif date == date.currentDate():
+        if date == date.currentDate():
             painter.setBrush(QtGui.QColor(255, 159, 159, 50))
             painter.setPen(QtGui.QColor(0, 0, 0, 0))
             painter.drawRect(rect)
@@ -71,6 +77,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.editButton.clicked.connect(self.create_edit_dialog)
         self.delButton.clicked.connect(self.create_del_dialog)
 
+        self.addAction.triggered.connect(self.create_add_type_dialog)
+        self.uselessAction.triggered.connect(self.create_useless_dialog)
+        self.calcAction.triggered.connect(self.create_calc_dialog)
+
     def update_calendar(self):
         self.mainCalendar = CustomCalendar(self.centralwidget)
         self.mainCalendar.setGeometry(QtCore.QRect(0, 0, 831, 621))
@@ -109,13 +119,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 elif j == 1:
                     val = self.times[val]
                     t = val
-                    if val == None:
+                    if val == None or val == 'NULL':
                         val = 'Весь день'
                 elif j == 3:
                     a = [int(i) for i in str(dt.date.today()).split('-')]
                     b = [int(i) for i in date.split('-')]
-
-                    val = {None: 'Не закончено', 0: 'Не закончено', 1: 'Закончено', 'NONE': 'Не закончено'}[val]
+                    val = {None: 'Не закончено', 0: 'Не закончено', 1: 'Закончено', 'NULL': 'Не закончено'}[val]
 
                     if val == 'Не закончено':
                         if dt.datetime(a[0], a[1], a[2]) > dt.datetime((lambda x:
@@ -145,7 +154,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setFixedSize(835, 1006)
             self.dateData.hide()
             self.pixmap = QPixmap('shrek.jpg')
-            self.image.move(0, 653)
+            self.image.move(0, 673)
             self.image.resize(920, 366)
             self.image.hide()
             self.image.show()
@@ -157,12 +166,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.image.hide()
             self.dateData.show()
 
-    def create_add_dialog(self):
-        self.dialog = AddDialog(self, self.date)
+    def create_add_dialog(self, date=None):
+        if not date:
+            date = self.date
+        self.dialog = AddDialog(self, date)
         self.dialog.show()
 
     def create_edit_dialog(self, entry):
-        self.dialog = 3
+        rows = list(set([i.row() for i in self.entryTable.selectedItems()]))
+        if not rows:
+            self.statusBar().showMessage('Ничего не выбрано')
+            return 0
+        if len(rows) > 1:
+            self.statusBar().showMessage('Выбрано слишком много записей')
+            return 0
+        row = [self.entryTable.item(rows[0], i).text() for i in range(4)]
+
+        if row[1] == 'Весь день':
+            t = ""
+        else:
+            t = f" time = '{row[1]}' AND"
+
+        time_id = self.cur.execute(f"""SELECT id FROM times WHERE{t} date = '{self.date}'""").fetchall()[0][0]
+        type_id = self.cur.execute(f"""SELECT id FROM types WHERE title = '{row[0]}'""").fetchall()[0][0]
+
+        entry = self.cur.execute(f"""SELECT id FROM main_data WHERE type_id IN ({type_id})
+         AND time_id IN ({time_id}) AND entry IN ('{row[2]}')""").fetchall()[0][0]
+        self.dialog = EditDialog(self, self.date, entry, row)
         self.dialog.show()
 
     def create_del_dialog(self):
@@ -197,6 +227,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if event.y() not in range(640, 916):
             self.setFixedSize(835, 640)
 
+    def create_add_type_dialog(self):
+        self.dialog = AddTypeDialog(self)
+        self.dialog.show()
+
+    def create_useless_dialog(self):
+        self.dialogh = UselessDialog(self)
+        self.dialogh.show()
+
+    def create_calc_dialog(self):
+        self.dialogg = CalcDialog(self)
+        self.dialogg.show()
+
 
 class AddDialog(QDialog, Ui_addDialog):
     def __init__(self, parent, date_in):
@@ -219,41 +261,61 @@ class AddDialog(QDialog, Ui_addDialog):
         self.incompleteTimeWidget.hide()
         self.completedWidget.show()
         self.periodic = False
+        self.timeBased = False
 
     def act(self, txt):
         self.typeDB = txt
-        if self.cur.execute(f"""SELECT periodic FROM types WHERE title = '{txt}'""").fetchall()[0][0] == 0:
+        t = self.cur.execute(f"""SELECT periodic, timeBased FROM types WHERE title = '{txt}'""").fetchall()[0]
+        if t[0] == 0:
             self.fullTimeWidget.show()
             self.incompleteTimeWidget.hide()
-            self.completedWidget.show()
             self.periodic = False
         else:
             self.fullTimeWidget.hide()
             self.incompleteTimeWidget.show()
-            self.completedWidget.hide()
             self.periodic = True
+
+        if t[1] == 0:
+            self.completedWidget.hide()
+            self.timeBased = False
+        else:
+            self.completedWidget.show()
+            self.timeBased = True
 
     def addToDB(self):
         entry = self.titleLine.text()
         type = self.typeBox.currentText()
         if self.periodic:
             date = str(self.dateEdit.date().toPyDate()).split('-')
-            date = f'{date[2]}-{date[1]}-{date[0]}'
+            date = f'{date[0]}-{date[1]}-{date[2]}'
             time = 'NULL'
-            cmpltd = 'NULL'
         else:
             date = str(self.dateTimeEdit.dateTime().toPyDateTime()).split()
             time = date[1][:-3]
             date = date[0]
+        if self.timeBased:
             cmpltd = {True: 1, False: 0}[self.completedCheckBox.isChecked()]
+        else:
+            cmpltd = 'NULL'
+
 
         if not entry:
             self.warninglbl.setText('Введите название')
         else:
             self.warninglbl.setText('')
-            self.cur.execute(f"""INSERT INTO times(time, date) VALUES('{time}', '{date}')""")
+            if time == 'NULL':
+                t = ""
+            else:
+                t = "'"
+            self.cur.execute(f"""INSERT INTO times(time, date) VALUES({t}{time}{t}, '{date}')""")
             self.con.commit()
-            time_id = self.cur.execute(f"""SELECT id FROM times WHERE time = '{time}' AND date = '{date}'""").fetchall()[0][0]
+
+            if time == 'NULL':
+                t = ""
+            else:
+                t = f" time = '{time}' AND"
+
+            time_id = self.cur.execute(f"""SELECT id FROM times WHERE{t} date = '{date}'""").fetchall()[0][0]
             type_id = self.cur.execute(f"""SELECT id FROM types WHERE title = '{type}'""").fetchall()[0][0]
             self.cur.execute(f"""INSERT INTO main_data(type_id, time_id,
              entry, completed) VALUES({type_id}, {time_id}, '{entry}', {cmpltd})""")
@@ -265,7 +327,227 @@ class AddDialog(QDialog, Ui_addDialog):
 
 
 class EditDialog(QDialog, Ui_editDialog):
-    pass
+    def __init__(self, parent, date_in, entry, row):
+        super(EditDialog, self).__init__(parent)
+        self.parent = parent
+        self.entry = entry
+        self.row = row
+        self.setupUi(self)
+        self.date_in = date_in
+        date = date_in.split('-')
+
+        if row[1] == 'Весь день':
+            t = QtCore.QTime(0, 0)
+        else:
+            t = row[1].split(':')
+            t = QtCore.QTime(int(t[0]), int(t[1]))
+
+        self.titleLine.setText(row[2])
+        self.dateEdit.setDate(QtCore.QDate(int(date[0]), int(date[1]), int(date[2])))
+        self.dateTimeEdit.setDateTime(QtCore.QDateTime(QtCore.QDate(int(date[0]), int(date[1]), int(date[2])), t))
+
+        self.con = parent.con
+        self.cur = parent.cur
+        self.typeBox.addItems([i[0] for i in self.cur.execute("SELECT title FROM types").fetchall()])
+        self.typeBox.setCurrentText(row[0])
+        self.act(row[0])
+
+        self.editButton.clicked.connect(self.editDB)
+        self.typeBox.activated[str].connect(self.act)
+
+    def act(self, txt):
+        self.typeDB = txt
+        t = self.cur.execute(f"""SELECT periodic, timeBased FROM types WHERE title = '{txt}'""").fetchall()[0]
+        if t[0] == 0:
+            self.fullTimeWidget.show()
+            self.incompleteTimeWidget.hide()
+            self.periodic = False
+        else:
+            self.fullTimeWidget.hide()
+            self.incompleteTimeWidget.show()
+            self.periodic = True
+
+        if t[1] == 0:
+            self.completedWidget.hide()
+            self.timeBased = False
+        else:
+            self.completedWidget.show()
+            self.timeBased = True
+
+    def editDB(self):
+        entry = self.titleLine.text()
+        type = self.typeBox.currentText()
+
+        if self.periodic:
+            date = str(self.dateEdit.date().toPyDate()).split('-')
+            date = f'{date[0]}-{date[1]}-{date[2]}'
+            time = 'NULL'
+        else:
+            date = str(self.dateTimeEdit.dateTime().toPyDateTime()).split()
+            time = date[1][:-3]
+            date = date[0]
+        if self.timeBased:
+            cmpltd = {True: 1, False: 0}[self.completedCheckBox.isChecked()]
+        else:
+            cmpltd = 'NULL'
+
+        if not entry:
+            self.warninglbl.setText('Введите название')
+        else:
+            self.warninglbl.setText('')
+            if time == 'NULL':
+                t = ""
+            else:
+                t = "'"
+            print(self.entry, entry, type, date, time, cmpltd)
+            type_id = self.cur.execute(f"""SELECT id from types WHERE title = '{type}'""").fetchall()[0][0]
+            time_id = self.cur.execute(f"""SELECT time_id from main_data WHERE id = {self.entry}""").fetchall()[0][0]
+            self.cur.execute(f"""UPDATE times SET time = {t}{time}{t} WHERE id = {time_id}""")
+            self.cur.execute(f"""UPDATE main_data SET type_id = {type_id}, entry = '{entry}',
+             completed = {cmpltd} WHERE id = {self.entry}""")
+            self.con.commit()
+            self.parent.statusBar().showMessage('Запись успешно отредактирована')
+            self.parent.date_clicked(tuple(map(int, date.split('-'))))
+            self.close()
+            self.parent.update_calendar()
+
+
+class AddTypeDialog(QDialog, Ui_addTypeDialog):
+    def __init__(self, parent):
+        super(AddTypeDialog, self).__init__(parent)
+        self.parent = parent
+        self.setupUi(self)
+
+        self.con = parent.con
+        self.cur = parent.cur
+
+        self.addButton.clicked.connect(self.add_type)
+
+    def add_type(self):
+        title = self.titleLine.text()
+        periodic = {True: 1, False: 0}[self.periodicCheckBox.isChecked()]
+        timeBased = {True: 1, False: 0}[self.timeBasedCheckBox.isChecked()]
+
+        if not title:
+            self.warninglbl.setText('Введите название')
+        else:
+            self.cur.execute(f"""INSERT INTO types(title, periodic, timeBased) VALUES('{title}', {periodic}, {timeBased})""")
+            self.con.commit()
+            self.parent.statusBar().showMessage('Тип события успешно добавлен')
+            self.close()
+
+
+class UselessDialog(QDialog, Ui_UselessDialog):
+    def __init__(self, parent):
+        super(UselessDialog, self).__init__(parent)
+        self.parent = parent
+        self.setupUi(self)
+
+        t = open("uselessShit.txt")
+        self.text = t.read()
+        t.close()
+
+        self.f = open("uselessShit.txt", 'w')
+        self.textEdit.setText(self.text)
+        self.new_text = self.text
+
+        self.saveButton.clicked.connect(self.save_text)
+        self.cancelButton.clicked.connect(self.cancel)
+
+    def cancel(self):
+        self.textEdit.setText(self.text)
+        self.new_text = self.text
+
+    def save_text(self):
+        text = self.textEdit.toPlainText()
+        self.new_text = text
+
+    def closeEvent(self, event):
+        if self.new_text != self.textEdit.toPlainText():
+            reply = QMessageBox.question(
+                self, "Warning",
+                "Вы уверены, что хотите закрыть? Несохранённые данные будут потеряны",
+                QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel,
+                QMessageBox.Save)
+            if reply == QMessageBox.Close:
+                self.f.write(self.new_text)
+                self.f.close()
+                event.accept()
+            elif reply == QMessageBox.Save:
+                self.save_text()
+                self.write(self.new_text)
+                self.f.close()
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            self.f.write(self.new_text)
+            self.f.close()
+            event.accept()
+
+
+class CalcDialog(QDialog, Ui_CalcDialog):
+    def __init__(self, parent):
+        super(CalcDialog, self).__init__(parent)
+        self.parent = parent
+        self.setupUi(self)
+        self.calcButton.clicked.connect(self.calc)
+        self.addButton.clicked.connect(self.add_to_db)
+        self.addButton.hide()
+        self.word = pymorphy2.MorphAnalyzer().parse('день')[0]
+
+    def calc(self):
+        if self.tabWidget.currentIndex():
+            first = self.dateEdit1.date()
+            second = self.dateEdit2.date()
+            word = self.word
+            t = first.daysTo(second)
+            if t < 0:
+                self.result_lbl.setText(f"{t * (-1)} {word.make_agree_with_number(t * (-1)).word} назад")
+            elif t > 0:
+                self.result_lbl.setText(f"{t} {word.make_agree_with_number(t).word} спустя")
+            else:
+                self.result_lbl.setText('0 дней')
+            date_in = self.dateEdit2.date().getDate()
+            self.date = f"{date_in[0]}-{'0' * (2 - len(str(date_in[1]))) + str(date_in[1])}" \
+                        f"-{'0' * (2 - len(str(date_in[2]))) + str(date_in[2])}"
+            self.addButton.show()
+        else:
+            if not self.dayLine.text():
+                self.addButton.hide()
+                self.result_lbl.setText('')
+                self.warning_lbl.setText('Введите число дней')
+                return 0
+            elif not self.dayLine.text().isdigit():
+                self.addButton.hide()
+                self.result_lbl.setText('')
+                self.warning_lbl.setText('Неверный тип данных')
+                return 0
+            elif int(self.dayLine.text()) > 100000000000:
+                self.addButton.hide()
+                self.result_lbl.setText('')
+                self.warning_lbl.setText('Слишком большое число')
+                return 0
+            else:
+                self.warning_lbl.setText('')
+                if self.comboBox.currentIndex():
+                    a = str(dt.date(*list(self.dateEdit1.date().getDate())) - dt.timedelta(int(self.dayLine.text()))).split('-')
+                    self.result_lbl.setText(QtCore.QDate(int(a[0]), int(a[1]), int(a[2])).toString())
+                    second = self.dateEdit1.date()
+                    first = second.addDays(int(self.dayLine.text()))
+                    self.date = a
+                else:
+                    first = self.dateEdit1.date()
+                    second = first.addDays(int(self.dayLine.text()))
+                    self.result_lbl.setText(first.addDays(first.daysTo(second)).toString())
+                    date_in = second.getDate()
+                    self.date = f"{date_in[0]}-{'0' * (2 - len(str(date_in[1]))) + str(date_in[1])}" \
+                                f"-{'0' * (2 - len(str(date_in[2]))) + str(date_in[2])}"
+            self.addButton.show()
+
+    def add_to_db(self):
+        self.parent.create_add_dialog(self.date)
+
 
 
 if __name__ == '__main__':

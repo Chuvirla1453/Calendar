@@ -15,6 +15,7 @@ from calcDialogUI import Ui_CalcDialog
 import datetime as dt
 import time
 import pymorphy2
+
 DATES = []
 
 
@@ -48,7 +49,6 @@ class CustomCalendar(QtWidgets.QCalendarWidget):
         for i in dates:
             i = i[0].split('-')
             DATES.append(QtCore.QDate(int(i[0]), int(i[1]), int(i[2])))
-
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -110,7 +110,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.times[i[0]] = i[1]
 
         for i in range(len(result[0])):
-            self.entryTable.setItem(0, i, QTableWidgetItem({0: 'Тип записи', 1: 'Время', 2: 'Название', 3: 'Статус'}[i]))
+            self.entryTable.setItem(0, i,
+                                    QTableWidgetItem({0: 'Тип записи', 1: 'Время', 2: 'Название', 3: 'Статус'}[i]))
         for i, elem in enumerate(result):
             for j, val in enumerate(elem):
                 if j == 0:
@@ -133,7 +134,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 val = 'Закончено'
                             else:
                                 val = 'Просрочено'
-                        elif s and t == None:
+                        elif s and not t:
                             pass
                         elif s and t != None:
                             c = [int(i) for i in t.split(':')]
@@ -209,8 +210,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         entries = [self.entryTable.item(i, 2).text() for i in rows]
         status = [self.entryTable.item(i, 3).text() for i in rows]
 
-        ids = self.cur.execute(f"""SELECT id FROM main_data WHERE type_id IN ({', '.join([str(i) for i in list(types)])})
-         AND time_id IN ({', '.join([str(i) for i in list(times)])}) AND entry IN ('{"', '".join(entries)}')""").fetchall()[0]
+        ids = \
+            self.cur.execute(f"""SELECT id FROM main_data WHERE type_id IN ({', '.join([str(i) for i in list(types)])})
+         AND time_id IN ({', '.join([str(i) for i in list(times)])}) AND entry IN ('{"', '".join(entries)}')""").fetchall()[
+                0]
         valid = QMessageBox.question(
             self, '', "Вы действительно хотите удалить выбранные записи",
             QMessageBox.Yes, QMessageBox.No)
@@ -249,7 +252,8 @@ class AddDialog(QDialog, Ui_addDialog):
         date = date_in.split('-')
 
         self.dateEdit.setDate(QtCore.QDate(int(date[0]), int(date[1]), int(date[2])))
-        self.dateTimeEdit.setDateTime(QtCore.QDateTime(QtCore.QDate(int(date[0]), int(date[1]), int(date[2])), QtCore.QTime(0, 0)))
+        self.dateTimeEdit.setDateTime(
+            QtCore.QDateTime(QtCore.QDate(int(date[0]), int(date[1]), int(date[2])), QtCore.QTime(0, 0)))
 
         self.con = parent.con
         self.cur = parent.cur
@@ -297,7 +301,6 @@ class AddDialog(QDialog, Ui_addDialog):
             cmpltd = {True: 1, False: 0}[self.completedCheckBox.isChecked()]
         else:
             cmpltd = 'NULL'
-
 
         if not entry:
             self.warninglbl.setText('Введите название')
@@ -431,7 +434,8 @@ class AddTypeDialog(QDialog, Ui_addTypeDialog):
         if not title:
             self.warninglbl.setText('Введите название')
         else:
-            self.cur.execute(f"""INSERT INTO types(title, periodic, timeBased) VALUES('{title}', {periodic}, {timeBased})""")
+            self.cur.execute(
+                f"""INSERT INTO types(title, periodic, timeBased) VALUES('{title}', {periodic}, {timeBased})""")
             self.con.commit()
             self.parent.statusBar().showMessage('Тип события успешно добавлен')
             self.close()
@@ -475,7 +479,6 @@ class UselessDialog(QDialog, Ui_UselessDialog):
                 event.accept()
             elif reply == QMessageBox.Save:
                 self.save_text()
-                self.write(self.new_text)
                 self.f.close()
                 event.accept()
             else:
@@ -531,7 +534,9 @@ class CalcDialog(QDialog, Ui_CalcDialog):
             else:
                 self.warning_lbl.setText('')
                 if self.comboBox.currentIndex():
-                    a = str(dt.date(*list(self.dateEdit1.date().getDate())) - dt.timedelta(int(self.dayLine.text()))).split('-')
+                    a = str(
+                        dt.date(*list(self.dateEdit1.date().getDate())) - dt.timedelta(int(self.dayLine.text()))).split(
+                        '-')
                     self.result_lbl.setText(QtCore.QDate(int(a[0]), int(a[1]), int(a[2])).toString())
                     second = self.dateEdit1.date()
                     first = second.addDays(int(self.dayLine.text()))
@@ -547,7 +552,6 @@ class CalcDialog(QDialog, Ui_CalcDialog):
 
     def add_to_db(self):
         self.parent.create_add_dialog(self.date)
-
 
 
 if __name__ == '__main__':

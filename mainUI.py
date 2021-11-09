@@ -42,7 +42,7 @@ class Ui_MainWindow(object):
         self.addButton.setGeometry(QtCore.QRect(180, 0, 181, 31))
         self.addButton.setObjectName("addButton")
         self.curDate = QtWidgets.QLabel(self.widget)
-        self.curDate.setGeometry(QtCore.QRect(10, 7, 141, 21))
+        self.curDate.setGeometry(QtCore.QRect(10, 7, 151, 21))
         font = QtGui.QFont()
         font.setFamily("Script MT Bold")
         font.setPointSize(14)
